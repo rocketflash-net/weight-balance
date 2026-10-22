@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Weight &amp; Balance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=B612:wght@400;700&family=B612+Mono:wght@400;700&display=swap">
+<style>
+/* Layout: load sheet on the left, CG envelope + verdict on the right; custom aircraft editor and notes below. Same avionics family as RadioNav Trainer. */
+:root{
+  --bg:#0d1013; --panel:#15191e; --panel2:#1b2027; --line:#29313a; --bezel:#07090b; --face:#111418;
+  --fg:#e9e6dd; --muted:#8a949e; --mag:#ff5ad9; --cyan:#3fd7ef; --green:#4ce08e; --amber:#ffb627; --red:#ff5a5a;
+  --font:'B612', 'Segoe UI', system-ui, sans-serif; --mono:'B612 Mono', ui-monospace, Consolas, monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg);color:var(--fg)}
+body{margin:0;font-family:var(--font);font-size:14px;line-height:1.5;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:16px 40px}
+[hidden]{display:none!important}
+.wrap{max-width:1320px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding-bottom:12px}
+.top-r{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+h1{margin:2px 0 0;font-size:26px;font-weight:700;letter-spacing:-.01em;text-wrap:balance}
+h1 span{color:var(--mag)}
+h2{margin:0;font-size:15px;color:var(--cyan);font-weight:700}
+.seg{display:flex;gap:4px;background:var(--bezel);border:1px solid var(--line);border-radius:8px;padding:4px}
+.seg button{font:inherit;font-family:var(--mono);font-size:12px;letter-spacing:.06em;color:var(--muted);background:transparent;border:0;border-radius:5px;padding:7px 11px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--panel2);color:var(--cyan);box-shadow:inset 0 0 0 1px var(--line)}
+button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.btn{font:inherit;font-family:var(--mono);font-size:12px;color:var(--fg);background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:7px 10px;cursor:pointer}
+.btn:hover{border-color:var(--muted)}
+.btn.pri{background:color-mix(in srgb,var(--green) 18%,var(--panel2));border-color:color-mix(in srgb,var(--green) 45%,transparent);color:var(--green)}
+.btn.del{color:var(--red)}
+
+.app{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:12px;align-items:start}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;min-width:0;display:flex;flex-direction:column;gap:12px}
+.acrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+select,input.num,input.txt{font:inherit;font-family:var(--font);color:var(--fg);background:var(--bezel);border:1px solid var(--line);border-radius:5px;padding:6px 8px}
+select{flex:1;min-width:200px;font-size:14px}
+input.num{width:84px;text-align:right;font-variant-numeric:tabular-nums}
+input.num.sm{width:64px}
+input.txt{width:100%;min-width:120px}
+input.num:hover,input.txt:hover,select:hover{border-color:var(--muted)}
+input.num.over{border-color:var(--red);color:var(--red)}
+.src{font-size:12px;color:var(--amber)}
+
+.tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{padding:7px 10px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left;white-space:normal}
+thead th{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:400;background:var(--bezel)}
+td{font-family:var(--font);font-size:13px}
+td:first-child{font-family:var(--font);font-size:13px}
+td .lim{display:block;font-size:11px;color:var(--muted)}
+td .inl{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+tr.sub td{background:var(--panel2);font-weight:700;color:var(--fg)}
+tr.sub td:first-child{font-family:var(--mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase}
+tr.minus td{color:var(--muted)}
+tbody tr:last-child td{border-bottom:0}
+td.cg{color:var(--cyan)}
+
+.verdict{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:var(--bezel)}
+.verdict b{font-family:var(--mono);letter-spacing:.08em;font-size:15px}
+.verdict.ok{border-color:color-mix(in srgb,var(--green) 50%,transparent)} .verdict.ok b{color:var(--green)}
+.verdict.bad{border-color:color-mix(in srgb,var(--red) 55%,transparent)} .verdict.bad b{color:var(--red)}
+.verdict span{color:var(--muted);font-size:13px}
+.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.card{background:var(--bezel);border:1px solid var(--line);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:2px}
+.card .w{font-family:var(--font);font-size:20px;font-variant-numeric:tabular-nums}
+.card .c{font-family:var(--font);font-size:13px;color:var(--cyan)}
+.pill{align-self:flex-start;font-family:var(--mono);font-size:10px;letter-spacing:.1em;padding:2px 7px;border-radius:4px;margin-top:4px}
+.pill.ok{color:var(--green);border:1px solid color-mix(in srgb,var(--green) 50%,transparent)}
+.pill.bad{color:var(--red);border:1px solid color-mix(in srgb,var(--red) 55%,transparent)}
+.chart{width:100%;max-width:100%;display:block}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+.checks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px;font-size:13px}
+.checks li{display:grid;grid-template-columns:18px 1fr;gap:6px}
+.checks li::before{font-family:var(--mono);font-weight:700}
+.checks li.ok::before{content:"✓";color:var(--green)}
+.checks li.bad::before{content:"✕";color:var(--red)}
+.checks li.warn::before{content:"!";color:var(--amber)}
+
+details.panel{gap:0}
+details.panel>summary{cursor:pointer;font-weight:700;color:var(--cyan);list-style-position:inside}
+details[open].panel>summary{margin-bottom:12px}
+.ed{display:flex;flex-direction:column;gap:14px}
+.ed-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.fld{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+.fld input{width:100%}
+.ed h3{margin:0;font-size:13px;font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:400}
+.ed table td{padding:5px 8px}
+.notes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.notes article{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;min-width:0}
+.notes h2{margin-bottom:6px}
+.notes p,.notes li{color:#cfcbc1;max-width:65ch;margin:0}
+.notes ul,.notes ol{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
+.notes code{font-family:var(--mono);color:var(--mag);font-size:13px}
+.lb{display:contents}
+
+@media (max-width:960px){.app{grid-template-columns:minmax(0,1fr)}.notes{grid-template-columns:1fr}}
+@media (max-width:520px){.cards{grid-template-columns:1fr}h1{font-size:22px}}
+@media print{
+  :root{--bg:#fff;--panel:#fff;--panel2:#f1f1f1;--bezel:#fff;--face:#fff;--fg:#000;--muted:#444;--line:#bbb;--cyan:#035e8a;--green:#0a7a3b;--red:#b00020;--amber:#8a5a00;--mag:#a0127c;color-scheme:light}
+  .top-r,.no-print,details.panel,.notes{display:none!important}
+  .app{grid-template-columns:1fr 1fr}
+  body{padding:0}
+  input.num,select{border:0;padding:0;background:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow" data-i18n="eyebrow">Perhitungan berat &amp; titik berat pesawat</div>
+      <h1>Weight <span>&amp;</span> Balance</h1>
+    </div>
+    <div class="top-r">
+      <div class="seg" role="group" data-i18n-aria="unitAria" aria-label="Satuan berat">
+        <button data-unit="lb" aria-pressed="true">LB · GAL</button>
+        <button data-unit="kg" aria-pressed="false">KG · L</button>
+      </div>
+      <div class="seg" role="group" aria-label="Bahasa / Language">
+        <button data-lang="id" aria-pressed="true" title="Bahasa Indonesia">ID</button>
+        <button data-lang="en" aria-pressed="false" title="English">EN</button>
+      </div>
+      <button class="btn" id="printBtn" data-i18n="print">Cetak</button>
+    </div>
+  </header>
+
+  <main class="app">
+    <section class="panel" data-i18n-aria="loadAria" aria-label="Muatan">
+      <h2 data-i18n="loadTitle">Muatan</h2>
+      <div class="acrow">
+        <label for="acSel" class="eyebrow" data-i18n="aircraft">Pesawat</label>
+        <select id="acSel"></select>
+        <button class="btn no-print" id="resetBtn" data-i18n="reset">Reset muatan</button>
+      </div>
+      <p class="src" id="srcNote"></p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th data-i18n="thItem">Item</th><th id="thW">Berat (lb)</th><th data-i18n="thArm">Arm (in)</th><th id="thM">Momen /1000</th></tr></thead>
+          <tbody id="loadBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel" data-i18n-aria="resAria" aria-label="Hasil">
+      <h2 data-i18n="resTitle">Hasil</h2>
+      <div class="verdict" id="verdict"><b id="vText">—</b><span id="vSub"></span></div>
+      <div class="cards" id="cards"></div>
+      <svg class="chart" id="chart" viewBox="0 0 560 380" role="img" aria-label="CG envelope"></svg>
+      <div class="legend" id="legend"></div>
+      <ul class="checks" id="checks"></ul>
+    </section>
+  </main>
+
+  <details class="panel no-print" id="editor">
+    <summary data-i18n="edTitle">Pesawat kustom (pakai data POH pesawat kamu sendiri)</summary>
+    <div class="ed" id="edBody"></div>
+  </details>
+
+  <section class="notes">
+    <div class="lb" data-lang-block="id">
+      <article>
+        <h2>Cara pakai</h2>
+        <ol>
+          <li>Pilih pesawat, lalu isi <b>berat kosong (BEW)</b> dan arm-nya dari W&amp;B record pesawat kamu.</li>
+          <li>Isi berat pilot, penumpang, bagasi, dan bahan bakar.</li>
+          <li>Isi bahan bakar untuk taxi dan yang terpakai selama terbang.</li>
+          <li>Pastikan titik takeoff dan landing ada di dalam envelope, dan semua cek berwarna hijau.</li>
+        </ol>
+      </article>
+      <article>
+        <h2>Rumus dasar</h2>
+        <ul>
+          <li><code>Momen = Berat × Arm</code></li>
+          <li><code>CG = Total momen ÷ Total berat</code></li>
+          <li>Avgas dihitung <code>6 lb/gal</code> (<code>0,72 kg/L</code>).</li>
+          <li>CG bergeser saat bahan bakar terbakar. Karena itu cek CG di takeoff dan di landing, juga CG tanpa bahan bakar (zero fuel).</li>
+        </ul>
+      </article>
+      <article>
+        <h2>Penting</h2>
+        <p>Angka pesawat bawaan adalah contoh dari POH tipikal. Setiap pesawat punya berat kosong dan arm sendiri, dan batasnya bisa berbeda antar model atau tahun. Selalu gunakan POH/AFM dan W&amp;B record pesawat yang akan diterbangkan. Aplikasi ini untuk latihan dan pengecekan silang, bukan dokumen resmi.</p>
+      </article>
+    </div>
+    <div class="lb" data-lang-block="en" hidden>
+      <article>
+        <h2>How to use</h2>
+        <ol>
+          <li>Pick an aircraft, then enter the <b>basic empty weight (BEW)</b> and its arm from your aircraft's W&amp;B record.</li>
+          <li>Enter the pilot, passenger, baggage, and fuel weights.</li>
+          <li>Enter the taxi fuel and the fuel you plan to burn in flight.</li>
+          <li>Make sure the takeoff and landing points are inside the envelope and every check is green.</li>
+        </ol>
+      </article>
+      <article>
+        <h2>The basics</h2>
+        <ul>
+          <li><code>Moment = Weight × Arm</code></li>
+          <li><code>CG = Total moment ÷ Total weight</code></li>
+          <li>Avgas is counted as <code>6 lb/gal</code> (<code>0.72 kg/L</code>).</li>
+          <li>The CG moves as fuel burns, so check it at takeoff, at landing, and with no fuel (zero fuel).</li>
+        </ul>
+      </article>
+      <article>
+        <h2>Important</h2>
+        <p>The built-in aircraft numbers are examples from a typical POH. Every aircraft has its own empty weight and arm, and limits can differ between models and years. Always use the POH/AFM and W&amp;B record of the aircraft you will fly. This app is for practice and cross-checking, not an official document.</p>
+      </article>
+    </div>
+  </section>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const LB_KG=0.45359237, GAL_L=3.785411784, FUEL_LB_GAL=6;
+
+/* Typical POH figures. Weights lb, arms in (aft of datum), fuel US gal usable. */
+const BUILTIN={
+  c152:{name:'Cessna 152',maxRamp:1675,maxTO:1670,maxLdg:1670,bew:1129,bewArm:30.3,fuelArm:42,fuelCap:24.5,taxi:0,
+    stations:[{k:'pilot',n:['Pilot','Pilot'],arm:39,def:170},{k:'pax',n:['Penumpang','Passenger'],arm:39,def:150},
+      {k:'bag1',n:['Bagasi area 1','Baggage area 1'],arm:64,max:120,grp:'bag',def:10},{k:'bag2',n:['Bagasi area 2','Baggage area 2'],arm:84,max:40,grp:'bag',def:0}],
+    groups:{bag:{max:120,n:['Total bagasi','Total baggage']}},
+    env:[{n:'Normal / Utility',pts:[[31,1100],[31,1350],[32.65,1670],[36.5,1670],[36.5,1100]]}]},
+  c172s:{name:'Cessna 172S Skyhawk SP',maxRamp:2558,maxTO:2550,maxLdg:2550,bew:1663,bewArm:39.4,fuelArm:48,fuelCap:53,taxi:1.4,
+    stations:[{k:'pilot',n:['Pilot','Pilot'],arm:37,def:170},{k:'fpax',n:['Penumpang depan','Front passenger'],arm:37,def:150},
+      {k:'rear',n:['Penumpang belakang','Rear passengers'],arm:73,def:0},
+      {k:'bagA',n:['Bagasi area A','Baggage area A'],arm:95,max:120,grp:'bag',def:20},{k:'bagB',n:['Bagasi area B','Baggage area B'],arm:123,max:50,grp:'bag',def:0}],
+    groups:{bag:{max:120,n:['Total bagasi','Total baggage']}},
+    env:[{n:'Normal',pts:[[35,1500],[35,1950],[41,2550],[47.3,2550],[47.3,1500]]},{n:'Utility',pts:[[35,1500],[35,1950],[37.5,2200],[40.5,2200],[40.5,1500]]}]},
+  pa28:{name:'Piper PA-28-161 Warrior II',maxRamp:2325,maxTO:2325,maxLdg:2325,bew:1450,bewArm:86.0,fuelArm:95,fuelCap:48,taxi:0,
+    stations:[{k:'pilot',n:['Pilot','Pilot'],arm:80.5,def:170},{k:'fpax',n:['Penumpang depan','Front passenger'],arm:80.5,def:150},
+      {k:'rear',n:['Penumpang belakang','Rear passengers'],arm:118.1,def:0},{k:'bag',n:['Bagasi','Baggage'],arm:142.8,max:200,def:20}],
+    groups:{},
+    env:[{n:'Normal',pts:[[83,1200],[83,1950],[87,2325],[93,2325],[93,1200]]}]}
+};
+
+const I18N={
+  id:{eyebrow:'Perhitungan berat & titik berat pesawat',unitAria:'Satuan berat',print:'Cetak',loadAria:'Muatan',loadTitle:'Muatan',aircraft:'Pesawat',reset:'Reset muatan',
+    thItem:'Item',thArm:'Arm (in)',resAria:'Hasil',resTitle:'Hasil',edTitle:'Pesawat kustom (pakai data POH pesawat kamu sendiri)',
+    w:'Berat',mom:'Momen /1000',bew:'Berat kosong (BEW)',fuel:'Bahan bakar',taxi:'Taxi & run-up',burn:'Terpakai saat terbang',
+    zfw:'Zero fuel',ramp:'Ramp',to:'Takeoff',ldg:'Landing',max:'maks',cap:'kapasitas',
+    builtinGrp:'Pesawat bawaan',customGrp:'Pesawat kustom',
+    srcBuiltin:'Data contoh dari POH tipikal. Ganti BEW dan arm dengan angka dari W&B record pesawat kamu.',
+    srcCustom:'Pesawat kustom. Data tersimpan di browser ini saja.',
+    ok:'DALAM BATAS',bad:'DI LUAR BATAS',okSub:'Semua cek lolos.',badSub:n=>n+' cek gagal. Lihat daftar di bawah.',
+    pOk:'OK',pBad:'CEK',
+    cStation:(n,w,m)=>`${n}: ${w} melebihi batas ${m}`,cFuel:(f,c)=>`Bahan bakar ${f} melebihi kapasitas ${c}`,
+    cFuelUse:'Taxi + bahan bakar terpakai lebih besar dari bahan bakar yang ada',
+    cWeight:(p,w,m)=>`Berat ${p} ${w} melebihi maksimum ${m}`,cWeightOk:(p,w,m)=>`Berat ${p} ${w} (maks ${m})`,
+    cCg:(p,c,e)=>`CG ${p} ${c} di luar envelope ${e}`,cCgOk:(p,c,e)=>`CG ${p} ${c} di dalam envelope ${e}`,
+    cZfw:c=>`CG zero fuel ${c} di luar envelope. Pesawat bisa keluar batas jika bahan bakar hampir habis.`,
+    cZfwOk:c=>`CG zero fuel ${c} di dalam envelope`,
+    cUtil:'Takeoff juga masuk kategori Utility',cUtilNo:'Tidak masuk kategori Utility (manuver terbatas)',
+    lgTO:'Takeoff',lgLDG:'Landing',lgZFW:'Zero fuel',lgEnv:'Envelope',chartX:'CG (in)',chartY:u=>'Berat ('+u+')',
+    edNone:'Pesawat yang dipilih adalah pesawat bawaan. Buat salinan untuk mengubah semua datanya (stasiun, batas berat, envelope).',
+    edCopy:'Buat salinan sebagai pesawat kustom',edName:'Nama pesawat',edMaxRamp:'Maks ramp (lb)',edMaxTO:'Maks takeoff (lb)',edMaxLdg:'Maks landing (lb)',
+    edFuelArm:'Arm bahan bakar (in)',edFuelCap:'Kapasitas usable (gal)',edTaxi:'Bahan bakar taxi (gal)',
+    edStations:'Stasiun muatan',edStName:'Nama',edStArm:'Arm (in)',edStMax:'Maks (lb, opsional)',edAddSt:'+ Stasiun',
+    edEnv:'Titik envelope (urut mengelilingi batas)',edEnvCg:'CG (in)',edEnvW:'Berat (lb)',edAddPt:'+ Titik',edDel:'Hapus pesawat ini',
+    edHint:'Data pesawat kustom disimpan dalam lb dan inci, sesuai POH. Envelope ditulis sebagai titik-titik sudut, berurutan mengelilingi batas.',
+    copyName:n=>n+' (salinan)',newStation:'Stasiun baru'},
+  en:{eyebrow:'Aircraft weight & center of gravity',unitAria:'Weight units',print:'Print',loadAria:'Loading',loadTitle:'Loading',aircraft:'Aircraft',reset:'Reset loading',
+    thItem:'Item',thArm:'Arm (in)',resAria:'Result',resTitle:'Result',edTitle:'Custom aircraft (use your own aircraft POH data)',
+    w:'Weight',mom:'Moment /1000',bew:'Basic empty weight (BEW)',fuel:'Fuel',taxi:'Taxi & run-up',burn:'Burned in flight',
+    zfw:'Zero fuel',ramp:'Ramp',to:'Takeoff',ldg:'Landing',max:'max',cap:'capacity',
+    builtinGrp:'Built-in aircraft',customGrp:'Custom aircraft',
+    srcBuiltin:'Example data from a typical POH. Replace the BEW and arm with the numbers from your aircraft W&B record.',
+    srcCustom:'Custom aircraft. Data is saved in this browser only.',
+    ok:'WITHIN LIMITS',bad:'OUT OF LIMITS',okSub:'All checks passed.',badSub:n=>n+(n===1?' check':' checks')+' failed. See the list below.',
+    pOk:'OK',pBad:'CHECK',
+    cStation:(n,w,m)=>`${n}: ${w} is over the ${m} limit`,cFuel:(f,c)=>`Fuel ${f} is over the ${c} capacity`,
+    cFuelUse:'Taxi + flight fuel is more than the fuel on board',
+    cWeight:(p,w,m)=>`${p} weight ${w} is over the ${m} maximum`,cWeightOk:(p,w,m)=>`${p} weight ${w} (max ${m})`,
+    cCg:(p,c,e)=>`${p} CG ${c} is outside the ${e} envelope`,cCgOk:(p,c,e)=>`${p} CG ${c} is inside the ${e} envelope`,
+    cZfw:c=>`Zero fuel CG ${c} is outside the envelope. The aircraft could go out of limits when fuel runs low.`,
+    cZfwOk:c=>`Zero fuel CG ${c} is inside the envelope`,
+    cUtil:'Takeoff is also within the Utility category',cUtilNo:'Not within the Utility category (limited maneuvers)',
+    lgTO:'Takeoff',lgLDG:'Landing',lgZFW:'Zero fuel',lgEnv:'Envelope',chartX:'CG (in)',chartY:u=>'Weight ('+u+')',
+    edNone:'The selected aircraft is built in. Make a copy to edit all of its data (stations, weight limits, envelope).',
+    edCopy:'Copy as a custom aircraft',edName:'Aircraft name',edMaxRamp:'Max ramp (lb)',edMaxTO:'Max takeoff (lb)',edMaxLdg:'Max landing (lb)',
+    edFuelArm:'Fuel arm (in)',edFuelCap:'Usable capacity (gal)',edTaxi:'Taxi fuel (gal)',
+    edStations:'Loading stations',edStName:'Name',edStArm:'Arm (in)',edStMax:'Max (lb, optional)',edAddSt:'+ Station',
+    edEnv:'Envelope points (in order around the boundary)',edEnvCg:'CG (in)',edEnvW:'Weight (lb)',edAddPt:'+ Point',edDel:'Delete this aircraft',
+    edHint:'Custom aircraft data is stored in pounds and inches, as in the POH. Write the envelope as corner points, in order around the boundary.',
+    copyName:n=>n+' (copy)',newStation:'New station'}
+};
+let LANG='id';
+const tr=(k,...a)=>{const v=I18N[LANG][k];return typeof v==='function'?v(...a):v};
+
+/* ---------- storage (per-browser convenience; everything works without it) ---------- */
+const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const S={unit:'lb',acId:'c172s',custom:store.get('wb-custom',[]),ld:store.get('wb-loads',{}),bewOv:store.get('wb-bew',{})};
+const saved=store.get('wb-state',{});if(saved.unit)S.unit=saved.unit;if(saved.acId)S.acId=saved.acId;
+const saveAll=()=>{store.set('wb-custom',S.custom);store.set('wb-loads',S.ld);store.set('wb-bew',S.bewOv);store.set('wb-state',{unit:S.unit,acId:S.acId});};
+
+function cur(){
+  const b=BUILTIN[S.acId];
+  if(b){const ov=S.bewOv[S.acId]||{};return {...b,id:S.acId,custom:false,bew:ov.bew??b.bew,bewArm:ov.arm??b.bewArm};}
+  const c=S.custom.find(x=>x.id===S.acId);
+  if(c)return c;
+  S.acId='c172s';return cur();
+}
+function loads(a){
+  if(!S.ld[a.id]){const w={};a.stations.forEach(s=>w[s.k]=s.def||0);S.ld[a.id]={w,fuel:Math.min(a.fuelCap,40),taxi:a.taxi||0,burn:Math.round(a.fuelCap*0.25)};}
+  const L=S.ld[a.id];a.stations.forEach(s=>{if(L.w[s.k]==null)L.w[s.k]=0});return L;
+}
+const stName=s=>Array.isArray(s.n)?s.n[LANG==='id'?0:1]:s.n;
+const grpName=g=>Array.isArray(g.n)?g.n[LANG==='id'?0:1]:g.n;
+
+/* ---------- units ---------- */
+const kg=()=>S.unit==='kg';
+const toW=lb=>kg()?lb*LB_KG:lb, fromW=v=>kg()?v/LB_KG:v;
+const toF=gal=>kg()?gal*GAL_L:gal, fromF=v=>kg()?v/GAL_L:v;
+const wU=()=>kg()?'kg':'lb', fU=()=>kg()?'L':'gal';
+const num=v=>{const n=parseFloat(String(v).replace(',','.'));return isFinite(n)?n:0};
+const loc=()=>LANG==='id'?'id-ID':'en-US';
+const fW=lb=>toW(lb).toLocaleString(loc(),{maximumFractionDigits:kg()?1:0,minimumFractionDigits:kg()?1:0});
+const fWu=lb=>fW(lb)+' '+wU();
+const fA=x=>x.toLocaleString(loc(),{minimumFractionDigits:1,maximumFractionDigits:2});
+const fM=m=>(toW(m)/1000).toLocaleString(loc(),{minimumFractionDigits:2,maximumFractionDigits:2});
+const fF=g=>toF(g).toLocaleString(loc(),{maximumFractionDigits:1});
+const inW=lb=>{const v=toW(lb);return String(kg()?Math.round(v*10)/10:Math.round(v*10)/10).replace('.',LANG==='id'?',':'.')};
+const inF=g=>{const v=toF(g);return String(Math.round(v*10)/10).replace('.',LANG==='id'?',':'.')};
+const inA=x=>String(x).replace('.',LANG==='id'?',':'.');
+
+/* ---------- loading table ---------- */
+function renderSelect(){
+  const sel=$('acSel');
+  let h=`<optgroup label="${tr('builtinGrp')}">`+Object.entries(BUILTIN).map(([k,b])=>`<option value="${k}">${b.name}</option>`).join('')+'</optgroup>';
+  if(S.custom.length)h+=`<optgroup label="${tr('customGrp')}">`+S.custom.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('')+'</optgroup>';
+  sel.innerHTML=h;sel.value=S.acId;
+}
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function renderLoad(){
+  const a=cur(),L=loads(a);
+  $('thW').textContent=`${tr('w')} (${wU()})`;$('thM').textContent=tr('mom');
+  $('srcNote').textContent=a.custom?tr('srcCustom'):tr('srcBuiltin');
+  const row=(label,w,arm,m,cls='')=>`<tr class="${cls}"><td>${label}</td><td>${w}</td><td>${arm}</td><td>${m}</td></tr>`;
+  let h=row(tr('bew'),`<input class="num" inputmode="decimal" id="bewW" value="${inW(a.bew)}" aria-label="${tr('bew')}">`,
+    a.custom?fA(a.bewArm):`<input class="num sm" inputmode="decimal" id="bewArm" value="${inA(a.bewArm)}" aria-label="${tr('bew')} arm">`,'<span id="m-bew"></span>');
+  for(const s of a.stations){
+    const lim=s.max?`<span class="lim">${tr('max')} ${fWu(s.max)}</span>`:'';
+    h+=row(esc(stName(s))+lim,`<input class="num" inputmode="decimal" data-k="${s.k}" value="${inW(L.w[s.k])}" aria-label="${esc(stName(s))}">`,fA(s.arm),`<span id="m-${s.k}"></span>`);
+  }
+  h+=row(tr('zfw'),'<span id="zfwW"></span>','<span id="zfwA"></span>','<span id="zfwM"></span>','sub');
+  const fin=(id,v,lab)=>`<span class="inl">${lab} <input class="num sm" inputmode="decimal" id="${id}" value="${inF(v)}" aria-label="${lab}"> ${fU()}</span>`;
+  h+=row(fin('fuelIn',L.fuel,tr('fuel'))+`<span class="lim">${tr('cap')} ${fF(a.fuelCap)} ${fU()}</span>`,'<span id="fuelW"></span>',fA(a.fuelArm),'<span id="fuelM"></span>');
+  h+=row(tr('ramp'),'<span id="rampW"></span>','<span id="rampA"></span>','<span id="rampM"></span>','sub');
+  h+=row(fin('taxiIn',L.taxi,tr('taxi')),'<span id="taxiW"></span>',fA(a.fuelArm),'<span id="taxiM"></span>','minus');
+  h+=row(tr('to'),'<span id="toW"></span>','<span id="toA"></span>','<span id="toM"></span>','sub');
+  h+=row(fin('burnIn',L.burn,tr('burn')),'<span id="burnW"></span>',fA(a.fuelArm),'<span id="burnM"></span>','minus');
+  h+=row(tr('ldg'),'<span id="ldgW"></span>','<span id="ldgA"></span>','<span id="ldgM"></span>','sub');
+  $('loadBody').innerHTML=h;
+  document.querySelectorAll('#loadBody .sub td:nth-child(3)').forEach(td=>td.classList.add('cg'));
+}
+$('loadBody').addEventListener('input',e=>{
+  const t=e.target,a=cur(),L=loads(a);
+  if(t.dataset.k)L.w[t.dataset.k]=Math.max(0,fromW(num(t.value)));
+  else if(t.id==='fuelIn')L.fuel=Math.max(0,fromF(num(t.value)));
+  else if(t.id==='taxiIn')L.taxi=Math.max(0,fromF(num(t.value)));
+  else if(t.id==='burnIn')L.burn=Math.max(0,fromF(num(t.value)));
+  else if(t.id==='bewW'||t.id==='bewArm'){
+    if(a.custom){if(t.id==='bewW')a.bew=Math.max(0,fromW(num(t.value)));}
+    else{const ov=S.bewOv[a.id]||(S.bewOv[a.id]={});if(t.id==='bewW')ov.bew=Math.max(0,fromW(num(t.value)));else ov.arm=num(t.value);}
+  }
+  saveAll();calc();
+});
+
+/* ---------- math ---------- */
+function inPoly(x,y,pts){
+  let ins=false;
+  for(let i=0,j=pts.length-1;i<pts.length;j=i++){const[xi,yi]=pts[i],[xj,yj]=pts[j];if(((yi>y)!==(yj>y))&&(x<(xj-xi)*(y-yi)/(yj-yi)+xi))ins=!ins;}
+  if(ins)return true;
+  for(let i=0,j=pts.length-1;i<pts.length;j=i++){if(segDist(x,y,pts[j],pts[i])<0.005)return true;}
+  return false;
+}
+function segDist(x,y,[x1,y1],[x2,y2]){const dx=x2-x1,dy=y2-y1,l=dx*dx+dy*dy;let t=l?((x-x1)*dx+(y-y1)*dy)/l:0;t=Math.max(0,Math.min(1,t));return Math.hypot(x-(x1+t*dx),y-(y1+t*dy));}
+const pt=(w,m)=>({w,m,cg:w>0?m/w:0});
+
+function calc(){
+  const a=cur(),L=loads(a);
+  let w=a.bew,m=a.bew*a.bewArm;
+  setT('m-bew',fM(a.bew*a.bewArm));
+  const checks=[];
+  for(const s of a.stations){const sw=L.w[s.k]||0;w+=sw;m+=sw*s.arm;setT('m-'+s.k,fM(sw*s.arm));
+    const over=s.max&&sw>s.max;const inp=document.querySelector(`[data-k="${s.k}"]`);if(inp)inp.classList.toggle('over',!!over);
+    if(over)checks.push(['bad',tr('cStation',stName(s),fWu(sw),fWu(s.max))]);}
+  for(const [g,gd] of Object.entries(a.groups||{})){const tot=a.stations.filter(s=>s.grp===g).reduce((t,s)=>t+(L.w[s.k]||0),0);if(tot>gd.max)checks.push(['bad',tr('cStation',grpName(gd),fWu(tot),fWu(gd.max))]);}
+  const zfw=pt(w,m);
+  const fuelLb=L.fuel*FUEL_LB_GAL,taxiLb=L.taxi*FUEL_LB_GAL,burnLb=L.burn*FUEL_LB_GAL;
+  const ramp=pt(w+fuelLb,m+fuelLb*a.fuelArm);
+  const to=pt(ramp.w-taxiLb,ramp.m-taxiLb*a.fuelArm);
+  const ldg=pt(to.w-burnLb,to.m-burnLb*a.fuelArm);
+  const fuelOver=L.fuel>a.fuelCap+1e-9;$('fuelIn').classList.toggle('over',fuelOver);
+  if(fuelOver)checks.push(['bad',tr('cFuel',fF(L.fuel)+' '+fU(),fF(a.fuelCap)+' '+fU())]);
+  if(L.taxi+L.burn>L.fuel+1e-9)checks.push(['bad',tr('cFuelUse')]);
+  // table cells
+  const put=(p,id)=>{setT(id+'W',fW(p.w));setT(id+'A',fA(p.cg));setT(id+'M',fM(p.m));};
+  put(zfw,'zfw');put(ramp,'ramp');put(to,'to');put(ldg,'ldg');
+  setT('fuelW',fW(fuelLb));setT('fuelM',fM(fuelLb*a.fuelArm));
+  setT('taxiW','−'+fW(taxiLb));setT('taxiM','−'+fM(taxiLb*a.fuelArm));
+  setT('burnW','−'+fW(burnLb));setT('burnM','−'+fM(burnLb*a.fuelArm));
+  // limits
+  const env=a.env[0],envN=env.n;
+  const wChk=(p,max,name)=>{const ok=p.w<=max+1e-9;checks.push([ok?'ok':'bad',ok?tr('cWeightOk',name,fWu(p.w),fWu(max)):tr('cWeight',name,fWu(p.w),fWu(max))]);return ok;};
+  const cChk=(p,name)=>{const ok=inPoly(p.cg,p.w,env.pts);checks.push([ok?'ok':'bad',ok?tr('cCgOk',name,fA(p.cg)+' in',envN):tr('cCg',name,fA(p.cg)+' in',envN)]);return ok;};
+  const rampOk=wChk(ramp,a.maxRamp,tr('ramp'));
+  const toOk=wChk(to,a.maxTO,tr('to'))&cChk(to,tr('to'));
+  const ldgOk=wChk(ldg,a.maxLdg,tr('ldg'))&cChk(ldg,tr('ldg'));
+  const zOk=inPoly(zfw.cg,zfw.w,env.pts)||zfw.w<Math.min(...env.pts.map(p=>p[1]));
+  checks.push([zOk?'ok':'warn',zOk?tr('cZfwOk',fA(zfw.cg)+' in'):tr('cZfw',fA(zfw.cg)+' in')]);
+  if(a.env[1])checks.push(['ok',inPoly(to.cg,to.w,a.env[1].pts)?tr('cUtil'):tr('cUtilNo')]);
+  // verdict
+  const fails=checks.filter(c=>c[0]==='bad').length;
+  const v=$('verdict');v.className='verdict '+(fails?'bad':'ok');
+  $('vText').textContent=fails?tr('bad'):tr('ok');$('vSub').textContent=fails?tr('badSub',fails):tr('okSub');
+  const card=(name,p,ok)=>`<div class="card"><span class="eyebrow">${name}</span><span class="w">${fWu(p.w)}</span><span class="c">CG ${fA(p.cg)} in</span><span class="pill ${ok?'ok':'bad'}">${ok?tr('pOk'):tr('pBad')}</span></div>`;
+  $('cards').innerHTML=card(tr('ramp'),ramp,rampOk)+card(tr('to'),to,!!toOk)+card(tr('ldg'),ldg,!!ldgOk);
+  $('checks').innerHTML=checks.sort((x,y)=>({bad:0,warn:1,ok:2}[x[0]]-{bad:0,warn:1,ok:2}[y[0]])).map(c=>`<li class="${c[0]}">${esc(c[1])}</li>`).join('');
+  drawChart(a,{to,ldg,zfw});
+}
+const setT=(id,t)=>{const el=$(id);if(el)el.textContent=t};
+
+/* ---------- chart ---------- */
+function niceStep(range,target){const raw=range/target,mag=Math.pow(10,Math.floor(Math.log10(raw)));for(const k of [1,2,2.5,5,10])if(k*mag>=raw)return k*mag;return 10*mag;}
+function cssVars(){const cs=getComputedStyle(document.documentElement),o={};["line","muted","green","amber","cyan","mag","bg"].forEach(k=>o[k]=cs.getPropertyValue("--"+k).trim());return o;}
+let lastChart=null;
+function drawChart(a,P){lastChart=[a,P];
+  const W=560,H=380,ml=62,mr=16,mt=14,mb=44;
+  const allPts=a.env.flatMap(e=>e.pts).concat([[P.to.cg,P.to.w],[P.ldg.cg,P.ldg.w],[P.zfw.cg,P.zfw.w]]).filter(p=>isFinite(p[0])&&isFinite(p[1])&&p[1]>0);
+  let x0=Math.min(...allPts.map(p=>p[0])),x1=Math.max(...allPts.map(p=>p[0]));
+  let y0=Math.min(...allPts.map(p=>p[1])),y1=Math.max(...allPts.map(p=>p[1]));
+  const xs=niceStep(x1-x0||1,7);x0=Math.floor((x0-xs*0.4)/xs)*xs;x1=Math.ceil((x1+xs*0.4)/xs)*xs;
+  const yd0=toW(y0),yd1=toW(y1),ys=niceStep(yd1-yd0||1,6);const Y0=Math.floor((yd0-ys*0.3)/ys)*ys,Y1=Math.ceil((yd1+ys*0.3)/ys)*ys;
+  const X=x=>ml+(x-x0)/(x1-x0)*(W-ml-mr),Y=lb=>mt+(Y1-toW(lb))/(Y1-Y0)*(H-mt-mb),Yd=d=>mt+(Y1-d)/(Y1-Y0)*(H-mt-mb);
+  const C=cssVars();let s='';
+  for(let x=x0;x<=x1+1e-9;x+=xs){s+=`<line x1="${X(x)}" x2="${X(x)}" y1="${mt}" y2="${H-mb}" stroke="${C.line}" stroke-width="1"/><text x="${X(x)}" y="${H-mb+16}" fill="${C.muted}" font-size="11" text-anchor="middle" font-family="B612, sans-serif">${+x.toFixed(2)}</text>`;}
+  for(let y=Y0;y<=Y1+1e-9;y+=ys){s+=`<line x1="${ml}" x2="${W-mr}" y1="${Yd(y)}" y2="${Yd(y)}" stroke="${C.line}" stroke-width="1"/><text x="${ml-6}" y="${Yd(y)+4}" fill="${C.muted}" font-size="11" text-anchor="end" font-family="B612, sans-serif">${Math.round(y).toLocaleString(loc())}</text>`;}
+  s+=`<text x="${(ml+W-mr)/2}" y="${H-6}" fill="${C.muted}" font-size="11" text-anchor="middle" font-family="B612, sans-serif">${tr('chartX')}</text>`;
+  s+=`<text transform="translate(14 ${(mt+H-mb)/2}) rotate(-90)" fill="${C.muted}" font-size="11" text-anchor="middle" font-family="B612, sans-serif">${tr('chartY',wU())}</text>`;
+  a.env.forEach((e,i)=>{const d=e.pts.map(p=>`${X(p[0])},${Y(p[1])}`).join(' ');
+    s+=i===0?`<polygon points="${d}" fill="${C.green}" fill-opacity="0.12" stroke="${C.green}" stroke-width="2"/>`
+            :`<polygon points="${d}" fill="none" stroke="${C.amber}" stroke-width="1.5" stroke-dasharray="6 4"/>`;
+    const top=e.pts.reduce((b,p)=>p[1]>b[1]||(p[1]===b[1]&&p[0]<b[0])?p:b);
+    s+=`<text x="${X(top[0])+4}" y="${Y(top[1])-5}" fill="${i?C.amber:C.green}" font-size="11" font-family="B612, sans-serif">${esc(e.n)}</text>`;});
+  const ok=p=>isFinite(p.cg)&&p.w>0;
+  if(ok(P.zfw)&&ok(P.ldg))s+=`<line x1="${X(P.zfw.cg)}" y1="${Y(P.zfw.w)}" x2="${X(P.ldg.cg)}" y2="${Y(P.ldg.w)}" stroke="${C.muted}" stroke-width="1" stroke-dasharray="3 3"/>`;
+  if(ok(P.to)&&ok(P.ldg))s+=`<line x1="${X(P.to.cg)}" y1="${Y(P.to.w)}" x2="${X(P.ldg.cg)}" y2="${Y(P.ldg.w)}" stroke="${C.cyan}" stroke-width="2"/>`;
+  if(ok(P.zfw))s+=`<rect x="${X(P.zfw.cg)-4}" y="${Y(P.zfw.w)-4}" width="8" height="8" fill="${C.muted}"/>`;
+  if(ok(P.ldg))s+=`<circle cx="${X(P.ldg.cg)}" cy="${Y(P.ldg.w)}" r="6" fill="${C.bg}" stroke="${C.cyan}" stroke-width="2.5"/>`;
+  if(ok(P.to))s+=`<circle cx="${X(P.to.cg)}" cy="${Y(P.to.w)}" r="6.5" fill="${C.mag}"/>`;
+  $('chart').innerHTML=s;
+  $('legend').innerHTML=`<span><i style="background:var(--mag)"></i>${tr('lgTO')}</span><span><i style="border:2px solid var(--cyan);background:transparent"></i>${tr('lgLDG')}</span><span><i style="background:var(--muted);border-radius:1px"></i>${tr('lgZFW')}</span>`+
+    a.env.map((e,i)=>`<span><i style="background:${i?'transparent':'color-mix(in srgb, var(--green) 30%, transparent)'};border:2px ${i?'dashed var(--amber)':'solid var(--green)'};border-radius:2px"></i>${tr('lgEnv')} ${esc(e.n)}</span>`).join('');
+}
+
+/* ---------- custom aircraft editor ---------- */
+function renderEditor(){
+  const a=cur(),b=$('edBody');
+  if(!a.custom){b.innerHTML=`<p>${tr('edNone')}</p><div><button class="btn pri" id="edCopy">${tr('edCopy')}</button></div>`;return;}
+  const f=(k,lab,v,t='num')=>`<label class="fld">${lab}<input class="${t}" inputmode="${t==='num'?'decimal':'text'}" data-ed="${k}" value="${t==='num'?inA(v):esc(v)}"></label>`;
+  let h=`<p class="src" style="color:var(--muted)">${tr('edHint')}</p><div class="ed-grid">`+f('name',tr('edName'),a.name,'txt')+f('maxRamp',tr('edMaxRamp'),a.maxRamp)+f('maxTO',tr('edMaxTO'),a.maxTO)+f('maxLdg',tr('edMaxLdg'),a.maxLdg)
+    +f('bewArm',tr('bew')+' arm (in)',a.bewArm)+f('fuelArm',tr('edFuelArm'),a.fuelArm)+f('fuelCap',tr('edFuelCap'),a.fuelCap)+f('taxi',tr('edTaxi'),a.taxi)+'</div>';
+  h+=`<h3>${tr('edStations')}</h3><div class="tbl-wrap"><table><thead><tr><th>${tr('edStName')}</th><th>${tr('edStArm')}</th><th>${tr('edStMax')}</th><th></th></tr></thead><tbody>`+
+    a.stations.map((s,i)=>`<tr><td><input class="txt" data-st="${i}" data-f="n" value="${esc(stName(s))}"></td><td><input class="num" inputmode="decimal" data-st="${i}" data-f="arm" value="${inA(s.arm)}"></td><td><input class="num" inputmode="decimal" data-st="${i}" data-f="max" value="${s.max?inA(s.max):''}"></td><td><button class="btn del" data-delst="${i}" aria-label="Delete">✕</button></td></tr>`).join('')+
+    `</tbody></table></div><div><button class="btn" id="edAddSt">${tr('edAddSt')}</button></div>`;
+  h+=`<h3>${tr('edEnv')}</h3><div class="tbl-wrap"><table><thead><tr><th>#</th><th>${tr('edEnvCg')}</th><th>${tr('edEnvW')}</th><th></th></tr></thead><tbody>`+
+    a.env[0].pts.map((p,i)=>`<tr><td>${i+1}</td><td><input class="num" inputmode="decimal" data-pt="${i}" data-f="0" value="${inA(p[0])}"></td><td><input class="num" inputmode="decimal" data-pt="${i}" data-f="1" value="${inA(p[1])}"></td><td><button class="btn del" data-delpt="${i}" aria-label="Delete">✕</button></td></tr>`).join('')+
+    `</tbody></table></div><div class="acrow"><button class="btn" id="edAddPt">${tr('edAddPt')}</button><span style="flex:1"></span><button class="btn del" id="edDel">${tr('edDel')}</button></div>`;
+  b.innerHTML=h;
+}
+$('edBody').addEventListener('input',e=>{
+  const t=e.target,a=cur();if(!a.custom)return;
+  if(t.dataset.ed){a[t.dataset.ed]=t.dataset.ed==='name'?t.value:num(t.value);if(t.dataset.ed==='name')renderSelect();}
+  else if(t.dataset.st!=null){const s=a.stations[+t.dataset.st];if(t.dataset.f==='n')s.n=t.value;else if(t.dataset.f==='arm')s.arm=num(t.value);else s.max=t.value.trim()?num(t.value):null;}
+  else if(t.dataset.pt!=null){a.env[0].pts[+t.dataset.pt][+t.dataset.f]=num(t.value);}
+  saveAll();renderLoad();calc();
+});
+$('edBody').addEventListener('click',e=>{
+  const t=e.target.closest('button');if(!t)return;const a=cur();
+  if(t.id==='edCopy'){
+    const c=JSON.parse(JSON.stringify(a));
+    c.id='cu-'+Date.now().toString(36);c.custom=true;c.name=tr('copyName',a.name);
+    c.stations.forEach(s=>{s.n=stName(s);});
+    Object.values(c.groups||{}).forEach(g=>{g.n=grpName(g);});
+    c.env=[c.env[0]];
+    S.custom.push(c);S.ld[c.id]=JSON.parse(JSON.stringify(loads(a)));S.acId=c.id;
+  }else if(!a.custom)return;
+  else if(t.id==='edAddSt'){a.stations.push({k:'s'+Date.now().toString(36),n:tr('newStation'),arm:0,max:null,def:0});}
+  else if(t.dataset.delst!=null){const s=a.stations.splice(+t.dataset.delst,1)[0];if(S.ld[a.id])delete S.ld[a.id].w[s.k];}
+  else if(t.id==='edAddPt'){const p=a.env[0].pts;p.push(p.length?[...p[p.length-1]]:[0,0]);}
+  else if(t.dataset.delpt!=null){if(a.env[0].pts.length>3)a.env[0].pts.splice(+t.dataset.delpt,1);}
+  else if(t.id==='edDel'){
+    if(t.dataset.confirm!=='1'){t.dataset.confirm='1';t.textContent=LANG==='id'?'Klik lagi untuk menghapus':'Click again to delete';return;}
+    S.custom=S.custom.filter(x=>x.id!==a.id);delete S.ld[a.id];S.acId='c172s';
+  }
+  saveAll();refresh();
+});
+
+/* ---------- wiring ---------- */
+function refresh(){renderSelect();renderLoad();renderEditor();calc();}
+function applyLang(l){
+  LANG=l;document.documentElement.lang=l;store.set('wb-lang',l);
+  document.querySelectorAll('[data-lang]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.lang===l?'true':'false'));
+  document.querySelectorAll('[data-i18n]').forEach(el=>{el.textContent=tr(el.dataset.i18n)});
+  document.querySelectorAll('[data-i18n-aria]').forEach(el=>el.setAttribute('aria-label',tr(el.dataset.i18nAria)));
+  document.querySelectorAll('[data-lang-block]').forEach(el=>{el.hidden=el.dataset.langBlock!==l});
+  refresh();
+}
+function applyUnit(u){S.unit=u;document.querySelectorAll('[data-unit]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.unit===u?'true':'false'));saveAll();renderLoad();calc();}
+document.querySelectorAll('[data-lang]').forEach(b=>b.addEventListener('click',()=>applyLang(b.dataset.lang)));
+document.querySelectorAll('[data-unit]').forEach(b=>b.addEventListener('click',()=>applyUnit(b.dataset.unit)));
+$('acSel').addEventListener('change',e=>{S.acId=e.target.value;saveAll();renderLoad();renderEditor();calc();});
+$('resetBtn').addEventListener('click',()=>{const a=cur();delete S.ld[a.id];if(!a.custom)delete S.bewOv[a.id];saveAll();renderLoad();calc();});
+$('printBtn').addEventListener('click',()=>window.print());
+['beforeprint','afterprint'].forEach(ev=>window.addEventListener(ev,()=>{if(lastChart)drawChart(...lastChart)}));
+
+let startLang=(navigator.language||'').toLowerCase().startsWith('id')?'id':'en';
+const sl=store.get('wb-lang',null);if(sl==='id'||sl==='en')startLang=sl;
+document.querySelectorAll('[data-unit]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.unit===S.unit?'true':'false'));
+applyLang(startLang);
+</script>
+</body>
+</html>
