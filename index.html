@@ -180,7 +180,7 @@ details[open].panel>summary{margin-bottom:12px}
         <ul>
           <li><code>Momen = Berat × Arm</code></li>
           <li><code>CG = Total momen ÷ Total berat</code></li>
-          <li>Avgas dihitung <code>6 lb/gal</code> (<code>0,72 kg/L</code>).</li>
+          <li>Avgas dihitung <code>6 lb/gal</code> (<code>0,72 kg/L</code>), Jet A <code>6,7 lb/gal</code> (<code>0,80 kg/L</code>).</li>
           <li>CG bergeser saat bahan bakar terbakar. Karena itu cek CG di takeoff dan di landing, juga CG tanpa bahan bakar (zero fuel).</li>
         </ul>
       </article>
@@ -204,7 +204,7 @@ details[open].panel>summary{margin-bottom:12px}
         <ul>
           <li><code>Moment = Weight × Arm</code></li>
           <li><code>CG = Total moment ÷ Total weight</code></li>
-          <li>Avgas is counted as <code>6 lb/gal</code> (<code>0.72 kg/L</code>).</li>
+          <li>Avgas is counted as <code>6 lb/gal</code> (<code>0.72 kg/L</code>), Jet A as <code>6.7 lb/gal</code> (<code>0.80 kg/L</code>).</li>
           <li>The CG moves as fuel burns, so check it at takeoff, at landing, and with no fuel (zero fuel).</li>
         </ul>
       </article>
@@ -237,8 +237,18 @@ const BUILTIN={
     stations:[{k:'pilot',n:['Pilot','Pilot'],arm:80.5,def:170},{k:'fpax',n:['Penumpang depan','Front passenger'],arm:80.5,def:150},
       {k:'rear',n:['Penumpang belakang','Rear passengers'],arm:118.1,def:0},{k:'bag',n:['Bagasi','Baggage'],arm:142.8,max:200,def:20}],
     groups:{},
-    env:[{n:'Normal',pts:[[83,1200],[83,1950],[87,2325],[93,2325],[93,1200]]}]}
+    env:[{n:'Normal',pts:[[83,1200],[83,1950],[87,2325],[93,2325],[93,1200]]}]},
+  /* Estimated figures (not cross-checked against a POH): the page flags this aircraft as an estimate. */
+  c208b:{name:'Cessna 208B Grand Caravan',estimate:true,maxRamp:8785,maxTO:8750,maxLdg:8500,bew:4730,bewArm:185.0,fuelArm:203.8,fuelCap:332,fuelDens:6.7,fuelName:'Jet A',defFuel:200,taxi:5,
+    stations:[{k:'pilot',n:['Pilot','Pilot'],arm:135.5,def:170},{k:'fpax',n:['Penumpang depan','Front passenger'],arm:135.5,def:0},
+      {k:'row2',n:['Kabin baris 2','Cabin row 2'],arm:173.9,def:340},{k:'row3',n:['Kabin baris 3','Cabin row 3'],arm:209.4,def:340},
+      {k:'row4',n:['Kabin baris 4','Cabin row 4'],arm:245.0,def:0},{k:'row5',n:['Kabin baris 5','Cabin row 5'],arm:280.6,def:0},
+      {k:'podA',n:['Cargo pod A','Cargo pod A'],arm:132.4,max:230,def:0},{k:'podB',n:['Cargo pod B','Cargo pod B'],arm:182.1,max:310,def:100},
+      {k:'podC',n:['Cargo pod C','Cargo pod C'],arm:233.4,max:270,def:100},{k:'podD',n:['Cargo pod D','Cargo pod D'],arm:287.6,max:280,def:0}],
+    groups:{},
+    env:[{n:'Normal',pts:[[179.6,4500],[179.6,5500],[193.37,8750],[204.35,8750],[204.35,4500]]}]}
 };
+const fuelDens=a=>a.fuelDens||FUEL_LB_GAL;
 
 const I18N={
   id:{eyebrow:'Perhitungan berat & titik berat pesawat',unitAria:'Satuan berat',print:'Cetak',loadAria:'Muatan',loadTitle:'Muatan',aircraft:'Pesawat',reset:'Reset muatan',
@@ -247,6 +257,8 @@ const I18N={
     zfw:'Zero fuel',ramp:'Ramp',to:'Takeoff',ldg:'Landing',max:'maks',cap:'kapasitas',
     builtinGrp:'Pesawat bawaan',customGrp:'Pesawat kustom',
     srcBuiltin:'Data contoh dari POH tipikal. Ganti BEW dan arm dengan angka dari W&B record pesawat kamu.',
+    srcEstimate:'Data PERKIRAAN, belum dicocokkan dengan POH. Arm kabin, cargo pod, dan envelope bisa berbeda per varian. Wajib cek ke POH sebelum dipakai.',
+    edFuelDens:'Massa jenis bahan bakar (lb/gal)',
     srcCustom:'Pesawat kustom. Data tersimpan di browser ini saja.',
     ok:'DALAM BATAS',bad:'DI LUAR BATAS',okSub:'Semua cek lolos.',badSub:n=>n+' cek gagal. Lihat daftar di bawah.',
     pOk:'OK',pBad:'CEK',
@@ -271,6 +283,8 @@ const I18N={
     zfw:'Zero fuel',ramp:'Ramp',to:'Takeoff',ldg:'Landing',max:'max',cap:'capacity',
     builtinGrp:'Built-in aircraft',customGrp:'Custom aircraft',
     srcBuiltin:'Example data from a typical POH. Replace the BEW and arm with the numbers from your aircraft W&B record.',
+    srcEstimate:'ESTIMATED data, not yet checked against a POH. Cabin and cargo pod arms and the envelope can differ between variants. Check the POH before you rely on it.',
+    edFuelDens:'Fuel density (lb/gal)',
     srcCustom:'Custom aircraft. Data is saved in this browser only.',
     ok:'WITHIN LIMITS',bad:'OUT OF LIMITS',okSub:'All checks passed.',badSub:n=>n+(n===1?' check':' checks')+' failed. See the list below.',
     pOk:'OK',pBad:'CHECK',
@@ -307,7 +321,7 @@ function cur(){
   S.acId='c172s';return cur();
 }
 function loads(a){
-  if(!S.ld[a.id]){const w={};a.stations.forEach(s=>w[s.k]=s.def||0);S.ld[a.id]={w,fuel:Math.min(a.fuelCap,40),taxi:a.taxi||0,burn:Math.round(a.fuelCap*0.25)};}
+  if(!S.ld[a.id]){const w={};a.stations.forEach(s=>w[s.k]=s.def||0);S.ld[a.id]={w,fuel:a.defFuel??Math.min(a.fuelCap,40),taxi:a.taxi||0,burn:Math.round(a.fuelCap*0.25)};}
   const L=S.ld[a.id];a.stations.forEach(s=>{if(L.w[s.k]==null)L.w[s.k]=0});return L;
 }
 const stName=s=>Array.isArray(s.n)?s.n[LANG==='id'?0:1]:s.n;
@@ -340,7 +354,7 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 function renderLoad(){
   const a=cur(),L=loads(a);
   $('thW').textContent=`${tr('w')} (${wU()})`;$('thM').textContent=tr('mom');
-  $('srcNote').textContent=a.custom?tr('srcCustom'):tr('srcBuiltin');
+  $('srcNote').textContent=a.custom?tr('srcCustom'):a.estimate?tr('srcEstimate'):tr('srcBuiltin');
   const row=(label,w,arm,m,cls='')=>`<tr class="${cls}"><td>${label}</td><td>${w}</td><td>${arm}</td><td>${m}</td></tr>`;
   let h=row(tr('bew'),`<input class="num" inputmode="decimal" id="bewW" value="${inW(a.bew)}" aria-label="${tr('bew')}">`,
     a.custom?fA(a.bewArm):`<input class="num sm" inputmode="decimal" id="bewArm" value="${inA(a.bewArm)}" aria-label="${tr('bew')} arm">`,'<span id="m-bew"></span>');
@@ -350,7 +364,7 @@ function renderLoad(){
   }
   h+=row(tr('zfw'),'<span id="zfwW"></span>','<span id="zfwA"></span>','<span id="zfwM"></span>','sub');
   const fin=(id,v,lab)=>`<span class="inl">${lab} <input class="num sm" inputmode="decimal" id="${id}" value="${inF(v)}" aria-label="${lab}"> ${fU()}</span>`;
-  h+=row(fin('fuelIn',L.fuel,tr('fuel'))+`<span class="lim">${tr('cap')} ${fF(a.fuelCap)} ${fU()}</span>`,'<span id="fuelW"></span>',fA(a.fuelArm),'<span id="fuelM"></span>');
+  h+=row(fin('fuelIn',L.fuel,tr('fuel'))+`<span class="lim">${a.fuelName||'Avgas'} · ${tr('cap')} ${fF(a.fuelCap)} ${fU()}</span>`,'<span id="fuelW"></span>',fA(a.fuelArm),'<span id="fuelM"></span>');
   h+=row(tr('ramp'),'<span id="rampW"></span>','<span id="rampA"></span>','<span id="rampM"></span>','sub');
   h+=row(fin('taxiIn',L.taxi,tr('taxi')),'<span id="taxiW"></span>',fA(a.fuelArm),'<span id="taxiM"></span>','minus');
   h+=row(tr('to'),'<span id="toW"></span>','<span id="toA"></span>','<span id="toM"></span>','sub');
@@ -393,7 +407,7 @@ function calc(){
     if(over)checks.push(['bad',tr('cStation',stName(s),fWu(sw),fWu(s.max))]);}
   for(const [g,gd] of Object.entries(a.groups||{})){const tot=a.stations.filter(s=>s.grp===g).reduce((t,s)=>t+(L.w[s.k]||0),0);if(tot>gd.max)checks.push(['bad',tr('cStation',grpName(gd),fWu(tot),fWu(gd.max))]);}
   const zfw=pt(w,m);
-  const fuelLb=L.fuel*FUEL_LB_GAL,taxiLb=L.taxi*FUEL_LB_GAL,burnLb=L.burn*FUEL_LB_GAL;
+  const fuelLb=L.fuel*fuelDens(a),taxiLb=L.taxi*fuelDens(a),burnLb=L.burn*fuelDens(a);
   const ramp=pt(w+fuelLb,m+fuelLb*a.fuelArm);
   const to=pt(ramp.w-taxiLb,ramp.m-taxiLb*a.fuelArm);
   const ldg=pt(to.w-burnLb,to.m-burnLb*a.fuelArm);
@@ -466,7 +480,7 @@ function renderEditor(){
   if(!a.custom){b.innerHTML=`<p>${tr('edNone')}</p><div><button class="btn pri" id="edCopy">${tr('edCopy')}</button></div>`;return;}
   const f=(k,lab,v,t='num')=>`<label class="fld">${lab}<input class="${t}" inputmode="${t==='num'?'decimal':'text'}" data-ed="${k}" value="${t==='num'?inA(v):esc(v)}"></label>`;
   let h=`<p class="src" style="color:var(--muted)">${tr('edHint')}</p><div class="ed-grid">`+f('name',tr('edName'),a.name,'txt')+f('maxRamp',tr('edMaxRamp'),a.maxRamp)+f('maxTO',tr('edMaxTO'),a.maxTO)+f('maxLdg',tr('edMaxLdg'),a.maxLdg)
-    +f('bewArm',tr('bew')+' arm (in)',a.bewArm)+f('fuelArm',tr('edFuelArm'),a.fuelArm)+f('fuelCap',tr('edFuelCap'),a.fuelCap)+f('taxi',tr('edTaxi'),a.taxi)+'</div>';
+    +f('bewArm',tr('bew')+' arm (in)',a.bewArm)+f('fuelArm',tr('edFuelArm'),a.fuelArm)+f('fuelCap',tr('edFuelCap'),a.fuelCap)+f('taxi',tr('edTaxi'),a.taxi)+f('fuelDens',tr('edFuelDens'),fuelDens(a))+'</div>';
   h+=`<h3>${tr('edStations')}</h3><div class="tbl-wrap"><table><thead><tr><th>${tr('edStName')}</th><th>${tr('edStArm')}</th><th>${tr('edStMax')}</th><th></th></tr></thead><tbody>`+
     a.stations.map((s,i)=>`<tr><td><input class="txt" data-st="${i}" data-f="n" value="${esc(stName(s))}"></td><td><input class="num" inputmode="decimal" data-st="${i}" data-f="arm" value="${inA(s.arm)}"></td><td><input class="num" inputmode="decimal" data-st="${i}" data-f="max" value="${s.max?inA(s.max):''}"></td><td><button class="btn del" data-delst="${i}" aria-label="Delete">✕</button></td></tr>`).join('')+
     `</tbody></table></div><div><button class="btn" id="edAddSt">${tr('edAddSt')}</button></div>`;
